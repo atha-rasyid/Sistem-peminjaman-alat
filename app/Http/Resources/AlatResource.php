@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class AlatResource extends JsonResource
+{
+    public function toArray($request): array
+    {
+        return [
+            'id' => $this->id,
+            'nama_alat' => $this->nama_alat,
+            'stok' => $this->stok,
+            'status_kondisi' => $this->status_kondisi,
+            'deskripsi' => $this->deskripsi,
+            'gambar' => $this->gambar ? url('storage/' . $this->gambar) : null,
+            'kategori' => new KategoriResource($this->whenLoaded('kategori')),
+            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
+        ];
+    }
+}
