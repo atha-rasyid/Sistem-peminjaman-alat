@@ -78,10 +78,10 @@
                                     <span class="block text-green-600 font-semibold">Kembali: {{ $peminjaman->tgl_kembali_real }}</span>
                                 @endif
                             </td>
-                            
+
                             <!-- KOLOM PETUGAS -->
                             <td class="py-3 px-4 border-b text-sm font-medium text-gray-800">
-                                {{ $peminjaman->petugas->name ?? $peminjaman->petugasPinjam->name ?? $peminjaman->petugasKembali->name ?? '-' }}
+                                Michael
                             </td>
 
                             <td class="py-3 px-4 border-b">
@@ -107,15 +107,23 @@
                                         </select>
                                     </form>
 
-                                    <!-- Tombol Hapus -->
-                                    <form action="{{ route('admin.peminjaman.destroy', $peminjaman->id) }}" method="POST"
-                                        onsubmit="return confirm('Yakin ingin menghapus data peminjaman ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition w-full">
+                                    <!-- Tombol Hapus (dinonaktifkan saat status dipinjam) -->
+                                    @if($peminjaman->status === 'dipinjam')
+                                        <button type="button" disabled
+                                            class="bg-gray-300 text-gray-500 px-3 py-1 rounded text-xs font-semibold w-full cursor-not-allowed"
+                                            title="Peminjaman yang masih dipinjam tidak dapat dihapus">
                                             Hapus
                                         </button>
-                                    </form>
+                                    @else
+                                        <form action="{{ route('admin.peminjaman.destroy', $peminjaman->id) }}" method="POST"
+                                            onsubmit="return confirm('Yakin ingin menghapus data peminjaman ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition w-full">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

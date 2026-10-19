@@ -58,16 +58,17 @@
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse($users as $user)
+                        @php $akunSendiri = $user->id === auth()->id(); @endphp
                         <tr class="hover:bg-gray-50 transition">
                             <!-- Kolom Nama + Foto Profil -->
                             <td class="py-3 px-4 border-b">
                                 <div class="flex items-center gap-3">
                                     @if(!empty($user->foto))
-                                        <img src="{{ asset('storage/' . $user->foto) }}" 
-                                             alt="{{ $user->name }}" 
+                                        <img src="{{ asset('storage/' . $user->foto) }}"
+                                             alt="{{ $user->name }}"
                                              class="w-9 h-9 rounded-full object-cover border border-gray-200"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        
+
                                         <!-- Sembunyi secara default, muncul jika gambar fisik gagal dimuat -->
                                         <div class="hidden w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold items-center justify-center text-xs border border-blue-200 uppercase">
                                             {{ substr($user->name, 0, 2) }}
@@ -79,6 +80,9 @@
                                         </div>
                                     @endif
                                     <span class="font-medium text-gray-900">{{ $user->name }}</span>
+                                    @if($akunSendiri)
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Anda</span>
+                                    @endif
                                 </div>
                             </td>
 
@@ -100,14 +104,22 @@
                                         Edit
                                     </a>
 
-                                    <!-- Tombol Hapus -->
-                                    <form action="{{ route('admin.user.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus user ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition">
+                                    <!-- Tombol Hapus (dinonaktifkan untuk akun yang sedang login) -->
+                                    @if($akunSendiri)
+                                        <button type="button" disabled
+                                            class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded text-xs font-semibold cursor-not-allowed"
+                                            title="Akun yang sedang digunakan tidak dapat dihapus">
                                             Hapus
                                         </button>
-                                    </form>
+                                    @else
+                                        <form action="{{ route('admin.user.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus user ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

@@ -41,10 +41,8 @@ class PetugasController extends Controller
             if ($peminjaman->status == 'diajukan') {
                 $userName = $peminjaman->user->name ?? 'User';
                 
-                // Ubah status ke ditolak
                 $peminjaman->update(['status' => 'ditolak']);
 
-                // Catat Log Aktivitas Petugas
                 LogAktivitas::create([
                     'user_id'   => auth()->id(),
                     'aktivitas' => "Petugas menolak pengajuan peminjaman ID #{$peminjaman->id} (User: {$userName})",
@@ -59,29 +57,25 @@ class PetugasController extends Controller
         }
     }
 
-    // Menyetujui Peminjaman (Mengubah status & mengurangi stok alat)
+    // Menyetujui Peminjaman
     public function setujuiPeminjaman($id)
     {
         DB::beginTransaction();
         try {
             $peminjaman = Peminjaman::with(['user', 'detailPinjams.alat'])->findOrFail($id);
 
-            // Validasi ketersediaan stok sebelum menyetujui
             foreach ($peminjaman->detailPinjams as $detail) {
                 if ($detail->alat->stok < $detail->jumlah) {
                     return redirect()->back()->with('error', "Stok alat {$detail->alat->nama_alat} tidak mencukupi (Tersisa: {$detail->alat->stok}).");
                 }
             }
 
-            // Update status peminjaman
             $peminjaman->update(['status' => 'dipinjam']);
 
-            // Kurangi stok alat secara otomatis
             foreach ($peminjaman->detailPinjams as $detail) {
                 $detail->alat->decrement('stok', $detail->jumlah);
             }
 
-            // Catat Log Aktivitas Petugas
             LogAktivitas::create([
                 'user_id'   => auth()->id(),
                 'aktivitas' => "Petugas menyetujui peminjaman ID #{$peminjaman->id} (User: {$peminjaman->user->name})",
@@ -100,42 +94,41 @@ class PetugasController extends Controller
     {
         $search = $request->input('search');
 
-        $pengembalians = Peminjaman::with(['user', 'detailPinjams.alat'])
-            ->whereIn('status', ['dipinjam', 'selesai', 'telat'])
-            ->when($search, function ($query, $search) {
-                return $query->whereHas('user', function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%");
-                });
-            })
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
+        $query = fn (array $status) => Peminjaman::with(['user', 'detailPinjams.alat', 'petugasKembali'])
+            ->whereIn('status', $status)
+            ->when($search, fn ($q) => $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")));
 
-        return view('petugas.pengembalian.index', compact('pengembalians', 'search'));
+        $peminjamanDiajukan   = $query(['diajukan'])->oldest()->paginate(5, ['*'], 'page_diajukan')->withQueryString();
+        $pengembalianDiajukan = $query(['dipinjam', 'telat'])->orderBy('tgl_kembali_plan')->paginate(5, ['*'], 'page_kembali')->withQueryString();
+        $pengembalians        = $query(['selesai'])->latest('tgl_kembali_real')->paginate(10, ['*'], 'page_riwayat')->withQueryString();
+
+        return view('petugas.pengembalian.index', compact('peminjamanDiajukan', 'pengembalianDiajukan', 'pengembalians'));
     }
 
-    // Form proses pengembalian alat (Cek Kondisi & Denda)
+    // Menampilkan form edit / proses konfirmasi pengembalian alat
     public function editPengembalian($id)
     {
         $peminjaman = Peminjaman::with(['user', 'detailPinjams.alat'])->findOrFail($id);
-        $tglReal = now()->toDateString();
-        $tglRencana = $peminjaman->tgl_kembali_plan ?? $peminjaman->tgl_kembali;
         
-        // Hitung denda keterlambatan jika ada
-        $dendaTerlambat = Pengembalian::hitungDendaKeterlambatan($tglRencana, $tglReal);
+        $tglRencana = $peminjaman->tgl_kembali_plan ?? $peminjaman->tgl_kembali;
+        $dendaTerlambat = Pengembalian::hitungDendaKeterlambatan(
+            $tglRencana,
+            date('Y-m-d')
+        );
 
         return view('petugas.pengembalian.edit', compact('peminjaman', 'dendaTerlambat'));
     }
 
-    // Eksekusi Simpan Pengembalian
+    // Eksekusi Update & Konfirmasi Pengembalian Menjadi Selesai
     public function updatePengembalian(Request $request, $id)
     {
         $request->validate([
             'tgl_kembali_real' => 'required|date',
             'keterangan'       => 'nullable|string',
-            'denda_per_unit'   => 'required|array',
-            'denda_per_unit.*' => 'numeric|min:0',
-            'kondisi'          => 'required|array',
+            'details'          => 'required|array',
+            'details.*.id'     => 'required|exists:detail_pinjam,id', // Diperbaiki dari detail_pinjams ke detail_pinjam
+            'details.*.kondisi'=> 'required|string',
+            'details.*.denda_per_unit' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -150,20 +143,23 @@ class PetugasController extends Controller
 
             $totalDendaKerusakan = 0;
 
-            foreach ($peminjaman->detailPinjams as $detail) {
-                $dendaUnit = $request->denda_per_unit[$detail->id] ?? 0;
-                $kondisi   = $request->kondisi[$detail->id] ?? 'baik';
+            foreach ($request->details as $item) {
+                $detail = \App\Models\DetailPinjam::findOrFail($item['id']);
+                $dendaUnit = $item['denda_per_unit'] ?? 0;
+                $kondisi   = $item['kondisi'] ?? 'baik';
+                
+                // Perhitungan subtotal denda per item
                 $subtotalDendaKerusakan = $dendaUnit * $detail->jumlah;
 
                 $detail->update([
                     'denda_per_unit'  => $dendaUnit,
                     'subtotal_denda'  => $subtotalDendaKerusakan,
-                    'kondisi_kembali' => $kondisi,
+                    'kondisi'         => $kondisi,
                 ]);
 
                 $totalDendaKerusakan += $subtotalDendaKerusakan;
 
-                // Kembalikan stok alat jika status sebelumnya masih dipinjam/telat
+                // Kembalikan stok alat jika status sebelumnya dipinjam/telat
                 if (in_array($peminjaman->status, ['dipinjam', 'telat'])) {
                     $detail->alat->increment('stok', $detail->jumlah);
                 }
@@ -178,25 +174,22 @@ class PetugasController extends Controller
                 'status'           => 'selesai',
             ]);
 
-            // Catat Log Aktivitas Petugas
             LogAktivitas::create([
                 'user_id'   => auth()->id(),
-                'aktivitas' => "Petugas memproses pengembalian peminjaman ID #{$peminjaman->id} (User: {$peminjaman->user->name})",
+                'aktivitas' => "Petugas mengonfirmasi pengembalian peminjaman ID #{$peminjaman->id} (User: {$peminjaman->user->name})",
             ]);
 
             DB::commit();
-            return redirect()->route('petugas.pengembalian.index')->with('success', 'Pengembalian barang berhasil diproses.');
+            return redirect()->route('petugas.pengembalian.index')->with('success', 'Pengembalian alat berhasil dikonfirmasi dan status diubah menjadi selesai.');
         } catch (Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', $e->getMessage());
+            return back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
     // ==========================================
     // FITUR LAPORAN
     // ==========================================
-
-    // 1. Tampilkan Laporan per Bulan & Filter Tahun
     public function indexLaporan(Request $request)
     {
         $bulan = $request->input('bulan', date('m'));
@@ -215,7 +208,6 @@ class PetugasController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        // Ringkasan Statistik Laporan Bulanan
         $totalPeminjaman = $peminjamans->total();
         $totalDendaBulanIni = Peminjaman::whereMonth('created_at', $bulan)
             ->whereYear('created_at', $tahun)
@@ -224,14 +216,12 @@ class PetugasController extends Controller
         return view('petugas.laporan.index', compact('peminjamans', 'bulan', 'tahun', 'search', 'totalPeminjaman', 'totalDendaBulanIni'));
     }
 
-    // 2. Form Tambah Laporan Manual / Catatan Tambahan Laporan
     public function createLaporan()
     {
         $peminjamans = Peminjaman::with('user')->latest()->get();
         return view('petugas.laporan.create', compact('peminjamans'));
     }
 
-    // 3. Simpan Laporan Manual Baru
     public function storeLaporan(Request $request)
     {
         $request->validate([
@@ -258,14 +248,12 @@ class PetugasController extends Controller
         }
     }
 
-    // 4. Form Edit Laporan
     public function editLaporan($id)
     {
-        $peminjaman = Peminjaman::with(['user', 'detailPinjams.alat'])->findOrFail($id);
+        $peminjaman = Peminjaman::with(['user', 'detailPinjam.alat'])->findOrFail($id);
         return view('petugas.laporan.edit', compact('peminjaman'));
     }
 
-    // 5. Eksekusi Update Laporan
     public function updateLaporan(Request $request, $id)
     {
         $request->validate([
@@ -293,7 +281,6 @@ class PetugasController extends Controller
         }
     }
 
-    // 6. Hapus Laporan / Record Peminjaman
     public function destroyLaporan($id)
     {
         try {
@@ -312,34 +299,30 @@ class PetugasController extends Controller
             return back()->with('error', 'Gagal menghapus laporan: ' . $e->getMessage());
         }
     }
-public function cetakLaporan(Request $request)
-{
-    $bulan = $request->get('bulan', date('m'));
-    $tahun = $request->get('tahun', date('Y'));
-    $search = $request->get('search');
 
-    $query = Peminjaman::with(['user', 'detailPinjams.alat'])
-        ->whereMonth('created_at', $bulan)
-        ->whereYear('created_at', $tahun);
+    public function cetakLaporan(Request $request)
+    {
+        $bulan = $request->get('bulan', date('m'));
+        $tahun = $request->get('tahun', date('Y'));
+        $search = $request->get('search');
 
-    if ($search) {
-        $query->whereHas('user', function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%");
-        });
+        $query = Peminjaman::with(['user', 'detailPinjams.alat'])
+            ->whereMonth('created_at', $bulan)
+            ->whereYear('created_at', $tahun);
+
+        if ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        $peminjamans = $query->get();
+        $totalPeminjaman = $peminjamans->count();
+        $totalDendaBulanIni = $peminjamans->sum('total_denda');
+
+        $pdf = Pdf::loadView('petugas.laporan.pdf', compact(
+            'peminjamans', 'bulan', 'tahun', 'totalPeminjaman', 'totalDendaBulanIni'
+        ));
+        return $pdf->stream("Laporan-Peminjaman-{$bulan}-{$tahun}.pdf");
     }
-
-    $peminjamans = $query->get();
-    $totalPeminjaman = $peminjamans->count();
-    $totalDendaBulanIni = $peminjamans->sum('total_denda');
-
-    // Opsi A: Menggunakan DomPDF package (Download/Stream PDF)
-    $pdf = Pdf::loadView('petugas.laporan.pdf', compact(
-        'peminjamans', 'bulan', 'tahun', 'totalPeminjaman', 'totalDendaBulanIni'
-    ));
-    return $pdf->stream("Laporan-Peminjaman-{$bulan}-{$tahun}.pdf");
-
-    // Opsi B: Tanpa Package (Cetak langsung via browser / window.print())
-    // return view('petugas.laporan.pdf', compact('peminjamans', 'bulan', 'tahun', 'totalPeminjaman', 'totalDendaBulanIni'));
-}
-
 }

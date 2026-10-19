@@ -10,6 +10,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/dashboard', [AuthController::class, 'dashboard'])
+    ->middleware('auth')
+    ->name('dashboard');
+
 // ==========================================
 // ADMIN ROUTES
 // ==========================================
@@ -92,18 +96,24 @@ Route::middleware(['auth', 'role:petugas,admin'])->prefix('petugas')->name('petu
 // ==========================================
 Route::middleware(['auth', 'role:peminjam'])->prefix('peminjam')->name('peminjam.')->group(function () {
     Route::get('/dashboard', [PeminjamController::class, 'dashboard'])->name('dashboard');
-    Route::get('/katalog', [PeminjamController::class, 'katalogAlat'])->name('katalog');                    // daftar alat
-    Route::get('/peminjam/pinjam/{id}', [PeminjamController::class, 'formPinjam'])->name('pinjam');
-    Route::post('/pinjam', [PeminjamController::class, 'prosesPeminjaman'])->name('pinjam.proses');         // 
-    Route::get('/riwayat', [PeminjamController::class, 'riwayatPeminjaman'])->name('riwayat');              // history Peminjaman user
+    Route::get('/katalog', [PeminjamController::class, 'katalogAlat'])->name('katalog');
+    
+    // Route form pinjam multi-item menggunakan query string (tanpa parameter {id})
+    Route::get('/pinjam', [PeminjamController::class, 'formPinjam'])->name('pinjam');
+    
+    Route::post('/pinjam', [PeminjamController::class, 'storeFormPinjam'])->name('pinjam.store'); 
+    
+    Route::get('/riwayat', [PeminjamController::class, 'riwayatPeminjaman'])->name('riwayat');
+    Route::post('/peminjaman', [PeminjamController::class, 'prosesPeminjaman'])->name('pinjam.proses');
+    Route::post('/proses-peminjaman', [PeminjamController::class, 'prosesPeminjaman'])->name('proses_peminjaman'); 
+
+    Route::put('/riwayat/{id}/kembalikan', [PeminjamController::class, 'ajukanKembali'])->name('kembalikan');
 });
 
 // ==========================================
 // AUTHENTICATION ROUTES
 // ==========================================
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
-});
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');

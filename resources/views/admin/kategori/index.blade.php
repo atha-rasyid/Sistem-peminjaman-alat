@@ -19,7 +19,7 @@
 <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
     <div class="p-5 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
         <h3 class="text-lg font-bold text-gray-800">Daftar Kategori Alat</h3>
-        
+
         <div class="flex items-center gap-3 w-full md:w-auto">
             <form action="{{ route('admin.kategori.index') }}" method="GET" class="flex w-full md:w-80">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kategori..."
@@ -28,14 +28,14 @@
                     Cari
                 </button>
                 @if(request('search'))
-                    <a href="{{ route('admin.kategori.index') }}" 
+                    <a href="{{ route('admin.kategori.index') }}"
                        class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-700 px-3 py-2 text-sm rounded-lg flex items-center transition" title="Reset Pencarian">
                         Reset
                     </a>
                 @endif
             </form>
 
-            <a href="{{ route('admin.kategori.create') }}" 
+            <a href="{{ route('admin.kategori.create') }}"
                class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition whitespace-nowrap">
                 + Tambah Kategori
             </a>
@@ -53,23 +53,37 @@
             </thead>
             <tbody class="text-gray-700 text-sm">
                 @forelse($kategoris as $index => $kategori)
+                    @php $sedangDipinjam = in_array($kategori->id, $kategoriDipinjam ?? []); @endphp
                     <tr class="hover:bg-gray-50 transition">
                         <td class="py-3 px-4 border-b text-gray-500">{{ $kategoris->firstItem() + $index }}</td>
-                        <td class="py-3 px-4 border-b font-medium text-gray-900">{{ $kategori->nama_kategori }}</td>
+                        <td class="py-3 px-4 border-b font-medium text-gray-900">
+                            {{ $kategori->nama_kategori }}
+                            @if($sedangDipinjam)
+                                <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-normal">Sedang dipinjam</span>
+                            @endif
+                        </td>
                         <td class="py-3 px-4 border-b">
                             <div class="flex items-center space-x-2">
-                                <a href="{{ route('admin.kategori.edit', $kategori->id) }}" 
+                                <a href="{{ route('admin.kategori.edit', $kategori->id) }}"
                                    class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition">
                                     Edit
                                 </a>
 
-                                <form action="{{ route('admin.kategori.destroy', $kategori->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus kategori ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition">
+                                @if($sedangDipinjam)
+                                    <button type="button" disabled
+                                        class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded text-xs font-semibold cursor-not-allowed"
+                                        title="Masih ada alat dalam kategori ini yang sedang dipinjam">
                                         Hapus
                                     </button>
-                                </form>
+                                @else
+                                    <form action="{{ route('admin.kategori.destroy', $kategori->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus kategori ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition">
+                                            Hapus
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

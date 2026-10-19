@@ -21,27 +21,38 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        if (Auth::check()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            $user = Auth::user();
-
-            // Redirect berdasarkan Role sesuai matriks Anda
-            if ($user->role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            } elseif ($user->role === 'petugas') {
-                return redirect()->route('petugas.peminjaman.index');
-            } elseif ($user->role === 'peminjam') {
-                return redirect()->route('peminjam.dashboard');
-            }
-
-            Auth::logout();
-            return redirect()->route('login')->with('error', 'Role tidak dikenali.');
+            return redirect()->route('dashboard');
         }
 
         return back()->withErrors([
             'email' => 'Email atau password salah.',
         ])->onlyInput('email');
+    }
+
+    public function dashboard()
+    {
+        return match (Auth::user()->role) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'petugas' => redirect()->route('petugas.peminjaman.index'),
+            'peminjam' => redirect()->route('peminjam.dashboard'),
+            default => $this->rejectUnknownRole(),
+        };
+    }
+
+    private function rejectUnknownRole()
+    {
+        Auth::logout();
+
+        return redirect()->route('login')->with('error', 'Role tidak dikenali.');
     }
 
     // Proses Logout

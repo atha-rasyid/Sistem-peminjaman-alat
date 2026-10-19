@@ -3,151 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Dashboard')</title>
-    <!-- Memuat Tailwind CSS CDN -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title', 'Sistem Peminjaman')</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .brand { font-family: 'Inter', sans-serif; letter-spacing: -0.01em; }
+        .btn-grad { background-image: linear-gradient(to right, #2563eb, #22d3ee); }
+        .glass-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+
+    @stack('styles')
 </head>
-<body class="bg-gray-100 font-sans antialiased">
+<body class="bg-slate-100 text-gray-800 antialiased">
+@php
+    $user    = auth()->user();
+    $role    = $user->role ?? 'guest';
+    $current = request()->route() ? request()->route()->getName() : '';
 
-    <div class="flex h-screen overflow-hidden">
+    $menus = match ($role) {
+        'admin' => [
+            ['admin.dashboard',          '🏠', 'Dashboard'],
+            ['admin.alat.index',         '🛠️', 'Alat'],
+            ['admin.kategori.index',     '🏷️', 'Kategori'],
+            ['admin.user.index',         '👥', 'User'],
+            ['admin.peminjaman.index',   '📤', 'Peminjaman'],
+            ['admin.pengembalian.index', '📥', 'Pengembalian'],
+        ],
+        'petugas' => [
+            ['petugas.peminjaman.index',   '📤', 'Peminjaman'],
+            ['petugas.pengembalian.index', '📥', 'Pengembalian'],
+            ['petugas.laporan.index',      '📊', 'Laporan'],
+        ],
+        'peminjam' => [
+            ['peminjam.dashboard', '🏠', 'Dashboard'],
+            ['peminjam.katalog',   '🛠️', 'Katalog Alat'],
+            ['peminjam.pinjam',    '📝', 'Ajukan Peminjaman'],
+            ['peminjam.riwayat',   '📚', 'Riwayat Peminjaman'],
+        ],
+        default => [],
+    };
+@endphp
 
-        <!-- SIDEBAR -->
-        <aside class="w-64 bg-gray-900 text-white flex flex-col hidden md:flex">
-            <!-- HEADER SIDEBAR DINAMIS -->
-            <div class="p-5 text-xl font-bold tracking-wider border-b border-gray-800">
-                PANEL {{ strtoupper(auth()->user()->role) }}
-            </div>
-
-            <nav class="flex-1 p-4 space-y-2">
-                
-                <!-- MENU DASHBOARD DINAMIS -->
-                @if(auth()->user()->role === 'admin')
-                    <a href="{{ route('admin.dashboard') }}" 
-                       class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('admin.dashboard') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Dashboard & Log
-                    </a>
-                @elseif(auth()->user()->role === 'petugas')
-                    @if(Route::has('petugas.dashboard'))
-                        <a href="{{ route('petugas.dashboard') }}" 
-                           class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('petugas.dashboard') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                           Dashboard Petugas
-                        </a>
-                    @endif
-                @elseif(auth()->user()->role === 'peminjam')
-                    @if(Route::has('peminjam.dashboard'))
-                        <a href="{{ route('peminjam.dashboard') }}" 
-                           class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('peminjam.dashboard') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                           Dashboard Peminjam
-                        </a>
-                    @endif
-                @endif
-
-                <!-- MENU KHUSUS ADMIN -->
-                @if(auth()->user()->role === 'admin')
-                    <a href="{{ route('admin.alat.index') }}" 
-                       class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('admin.alat*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Kelola Alat
-                    </a>
-                    <a href="{{ route('admin.kategori.index') }}" 
-                       class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('admin.kategori*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Kelola Kategori
-                    </a>
-                    <a href="{{ route('admin.user.index') }}" 
-                       class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('admin.user*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Kelola User
-                    </a>
-                @endif
-
-                <!-- MENU KHUSUS PEMINJAM -->
-                @if(auth()->user()->role === 'peminjam')
-                    <div class="pt-2 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Layanan</div>
-                    
-                    @if(Route::has('peminjam.katalog'))
-                        <a href="{{ route('peminjam.katalog') }}" 
-                           class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('peminjam.katalog*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                           Katalog Alat
-                        </a>
-                    @endif
-
-                    @if(Route::has('peminjam.riwayat'))
-                        <a href="{{ route('peminjam.riwayat') }}" 
-                           class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('peminjam.riwayat*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                           Riwayat Peminjaman
-                        </a>
-                    @endif
-                @endif
-
-                <!-- MENU TRANSAKSI DINAMIS (KHUSUS ADMIN & PETUGAS) -->
-                @if(in_array(auth()->user()->role, ['admin', 'petugas']))
-                    <div class="pt-2 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Transaksi</div>
-
-                    <!-- 1. Persetujuan Peminjaman -->
-                    @php
-                        $peminjamanRoute = auth()->user()->role === 'admin' 
-                            ? (Route::has('admin.peminjaman.index') ? route('admin.peminjaman.index') : '#')
-                            : (Route::has('petugas.peminjaman.index') ? route('petugas.peminjaman.index') : '#');
-                    @endphp
-                    <a href="{{ $peminjamanRoute }}" 
-                       class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('*peminjaman*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Persetujuan Peminjaman
-                    </a>
-
-                    <!-- 2. Pemantauan Pengembalian -->
-                    @php
-                        $pengembalianRoute = auth()->user()->role === 'admin' 
-                            ? (Route::has('admin.pengembalian.index') ? route('admin.pengembalian.index') : '#')
-                            : (Route::has('petugas.pengembalian.index') ? route('petugas.pengembalian.index') : '#');
-                    @endphp
-                    <a href="{{ $pengembalianRoute }}" 
-                       class="block px-4 py-2 rounded-lg transition whitespace-nowrap {{ request()->routeIs('*pengembalian*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Pemantauan Pengembalian
-                    </a>
-                @endif
-
-                <!-- FITUR LAPORAN (KHUSUS PETUGAS) -->
-                @if(auth()->user()->role === 'petugas')
-                    <div class="pt-2 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Laporan</div>
-                    @php
-                        $laporanRoute = Route::has('petugas.laporan.index') ? route('petugas.laporan.index') : '#';
-                    @endphp
-                    <a href="{{ $laporanRoute }}" 
-                       class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('*laporan*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
-                       Laporan Transaksi
-                    </a>
-                @endif
-
-            </nav>
-
-            <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-                Logged in as: <span class="text-white font-semibold">{{ auth()->user()->name }}</span>
-            </div>
-        </aside>
-
-        <!-- MAIN CONTENT CONTAINER -->
-        <div class="flex-1 flex flex-col overflow-y-auto">
-
-            <!-- NAVBAR ATAS -->
-            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
-                <div class="text-lg font-semibold text-gray-800">
-                    @yield('header-title', 'Dashboard')
-                </div>
-                <div>
-                    <form action="{{ route('logout') }}" method="POST">
-                        @csrf
-                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                            Logout
-                        </button>
-                    </form>
-                </div>
-            </header>
-
-            <!-- KONTEN UTAMA HALAMAN -->
-            <main class="flex-1 p-6">
-                @yield('content')
-            </main>
-
+<div class="min-h-screen flex">
+    {{-- Sidebar --}}
+    <aside class="hidden md:flex w-64 shrink-0 flex-col bg-slate-900 text-gray-200">
+        <div class="px-6 py-5 border-b border-white/10">
+            <p class="brand text-lg font-bold text-white">Sistem Peminjaman</p>
+            <p class="text-xs text-gray-400 mt-0.5 uppercase tracking-wider">{{ $role }}</p>
         </div>
-    </div>
 
+        <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+            @foreach ($menus as [$routeName, $ikon, $label])
+                @if (Route::has($routeName))
+                    <a href="{{ route($routeName) }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition
+                              {{ str_starts_with($current, rtrim(str_replace('.index', '', $routeName), '.')) ? 'bg-white/10 text-white font-semibold' : 'hover:bg-white/5' }}">
+                        <span>{{ $ikon }}</span>{{ $label }}
+                    </a>
+                @endif
+            @endforeach
+        </nav>
+
+        <div class="px-4 py-4 border-t border-white/10">
+            <p class="text-sm font-medium text-white truncate">{{ $user->name ?? 'User' }}</p>
+            <p class="text-xs text-gray-400 truncate">{{ $user->email ?? '' }}</p>
+            @if (Route::has('logout'))
+                <form method="POST" action="{{ route('logout') }}" class="mt-3">
+                    @csrf
+                    <button type="submit" class="w-full text-left text-sm px-3 py-2 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 transition">
+                        Keluar
+                    </button>
+                </form>
+            @endif
+        </div>
+    </aside>
+
+    {{-- Konten --}}
+    <div class="flex-1 min-w-0 flex flex-col">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h1 class="text-xl font-bold text-gray-800">@yield('header-title', 'Dashboard')</h1>
+        </header>
+
+        <main class="flex-1 p-6">
+            @if (session('success'))
+                <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
+                    {{ session('error') }}
+                </div>
+            @endif
+            @if ($errors->any())
+                <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
+                    <ul class="list-disc pl-5">
+                        @foreach ($errors->all() as $e)
+                            <li>{{ $e }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @yield('content')
+        </main>
+    </div>
+</div>
+
+@stack('scripts')
 </body>
 </html>

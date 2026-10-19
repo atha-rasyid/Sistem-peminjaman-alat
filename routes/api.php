@@ -67,5 +67,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/peminjam/pinjam/{id}', [PeminjamController::class, 'formPinjam'])->name('peminjam.pinjam');
         Route::post('/peminjaman', [PeminjamController::class, 'prosesPeminjaman'])->name('pinjam.proses');
         Route::get('/riwayat-pinjam', [PeminjamController::class, 'riwayatPeminjaman'])->name('riwayat');
-});
+    });
 });

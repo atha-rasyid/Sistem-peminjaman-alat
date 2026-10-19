@@ -1,0 +1,53 @@
+services:
+  # 1. Database
+  mysql-server:
+    image: mysql:8.0
+    container_name: MySQL-API-DF
+    environment:
+      MYSQL_DATABASE: API_ujikom
+      MYSQL_USER: api_ujikom
+      MYSQL_PASSWORD: api_ujikom
+      MYSQL_ROOT_PASSWORD: passwordroot
+    ports:
+      - "3308:3306" # Port host diubah dari 3307 -> 3308
+    networks:
+      - API-UJIKOM-DF
+    volumes:
+      - db_data_df:/var/lib/mysql
+
+  # 2. Laravel
+  app-laravel:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: Laravel-API-DF
+    working_dir: /var/www
+    ports:
+      - "8001:8000" # Port host diubah dari 8000 -> 8001
+    volumes:
+      - ./backend:/var/www
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    depends_on:
+      - mysql-server
+    networks:
+      - API-UJIKOM-DF
+
+  # 3. phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: PhpMyAdmin-API-DF
+    environment:
+      PMA_HOST: mysql-server
+    ports:
+      - "8082:80" # Port host diubah dari 8081 -> 8082
+    depends_on:
+      - mysql-server
+    networks:
+      - API-UJIKOM-DF
+
+volumes:
+  db_data_df:
+
+networks:
+  API-UJIKOM-DF:
+    driver: bridge
