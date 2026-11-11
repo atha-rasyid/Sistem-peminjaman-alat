@@ -21,18 +21,18 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Steo-Step Setup Projeck 
+## Steo-Step Setup Projeck
 
-Berikut Langkah-langkah untuk menyiapkan & Setup untuk projeck agar bisa berjalan, dimulai dari langkah setup sampai ke code terminalnya Berikut detail langkah-langkahnya :
-    1. Langkah pertama tuliskan  wsl --install di terminal, agar teristall WSL 2  di docker.
-    2. masuk ke direktori ubuntu \\Linuxt\Ubuntu\home dengan klik connect WSL using distro di application VsCode.
-    3. setelah projeck berada di komputer ketikan di CMD Application dengan menuliskan docker compose up untuk menginstall full projeck.
-    4. dilanjutkan dengan mengetik CMD  docker exec -it laravel-api composer require laravel/sanctum.  untuk mengistall composer di projeck 
-    5. dilanjutkan dengan mengetik CMD docker exec -it laravel-api php artisan install:api. untuk API teristall di Projeck.
-    6. dilanjutkan dengan mengetik CMD docker exec -it laravel-api composer require barryvdh/laravel-dompdf. Digunakan untuk bisa memuat PDF
-    7. dilanjutkan dengan mengetik CMD docker exec -it laravel-api php artisan storage:link untuk memuat Storage di projeck.
-    8. untuk meng-generate database dilakukan di CMD dengan mengetikan docker exec -it laravel-api php artisan Migrate --seed 
-    9. - - - - -
+Berikut Langkah-langkah untuk menyiapkan & Setup untuk projeck agar bisa berjalan, dimulai dari langkah setup sampai ke code terminalnya Berikut detail langkah-langkahnya :[cite: 1]
+1. Langkah pertama tuliskan wsl --install di terminal, agar teristall WSL 2 di docker.[cite: 1]
+2. masuk ke direktori ubuntu \Linuxt\Ubuntu\home dengan klik connect WSL using distro di application VsCode.[cite: 1]
+3. setelah projeck berada di komputer ketikan di CMD Application dengan menuliskan docker compose up untuk menginstall full projeck.[cite: 1]
+4. dilanjutkan dengan mengetik CMD docker exec -it laravel-api composer require laravel/sanctum. untuk mengistall composer di projeck[cite: 1]
+5. dilanjutkan dengan mengetik CMD docker exec -it laravel-api php artisan install:api. untuk API teristall di Projeck.[cite: 1]
+6. dilanjutkan dengan mengetik CMD docker exec -it laravel-api composer require barryvdh/laravel-dompdf. Digunakan untuk bisa memuat PDF[cite: 1]
+7. dilanjutkan dengan mengetik CMD docker exec -it laravel-api php artisan storage:link untuk memuat Storage di projeck.[cite: 1]
+8. untuk meng-generate database dilakukan di CMD dengan mengetikan docker exec -it laravel-api php artisan Migrate --seed[cite: 1]
+9. - - - - -[cite: 1]
     
 ## License
 
